@@ -1,18 +1,24 @@
-const CourtService = require('../services/court.service');
+const CourtService = require("../services/court.service");
+const cloudinary = require("../config/cloudinary");
 
 class CourtController {
- static async createCourt(req, res) {
+  static async createCourt(req, res) {
     try {
       let imageUrl;
       if (req.file) {
-        const result = await cloudinary.uploader.upload_stream(
-          { folder: "padel-hub/courts" },
-          (error, result) => {
-            if (error) throw error;
-            imageUrl = result.secure_url;
-          }
-        );
-        result.end(req.file.buffer);
+        imageUrl = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: "padel-hub/courts" },
+            (error, result) => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve(result.secure_url);
+              }
+            }
+          );
+          uploadStream.end(req.file.buffer);
+        });
       }
 
       const data = { ...req.body, image: imageUrl };
@@ -21,7 +27,7 @@ class CourtController {
     } catch (err) {
       res.status(400).json({ error: err.message });
     }
-    }
+  }
   static async getCourts(req, res) {
     try {
       const courts = await CourtService.getAllCourts();
@@ -64,7 +70,10 @@ class CourtController {
   static async addClosedDate(req, res) {
     try {
       const { date, reason } = req.body;
-      const court = await CourtService.addClosedDate(req.params.id, { date, reason });
+      const court = await CourtService.addClosedDate(req.params.id, {
+        date,
+        reason,
+      });
       res.json({ message: "Closed date added", court });
     } catch (err) {
       res.status(400).json({ error: err.message });
