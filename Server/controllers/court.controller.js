@@ -1,15 +1,27 @@
 const CourtService = require('../services/court.service');
 
 class CourtController {
-  static async createCourt(req, res) {
+ static async createCourt(req, res) {
     try {
-      const court = await CourtService.createCourt(req.body);
+      let imageUrl;
+      if (req.file) {
+        const result = await cloudinary.uploader.upload_stream(
+          { folder: "padel-hub/courts" },
+          (error, result) => {
+            if (error) throw error;
+            imageUrl = result.secure_url;
+          }
+        );
+        result.end(req.file.buffer);
+      }
+
+      const data = { ...req.body, image: imageUrl };
+      const court = await CourtService.createCourt(data);
       res.status(201).json({ message: "Court created", court });
     } catch (err) {
       res.status(400).json({ error: err.message });
     }
-  }
-
+    }
   static async getCourts(req, res) {
     try {
       const courts = await CourtService.getAllCourts();
