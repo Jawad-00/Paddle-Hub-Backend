@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 class AuthService {
-  static async register(email, phone, password, role) {
+  static async register(email, phone, password, role = 'user') {
     const existing = await User.findOne({ email });
     if (existing) throw new Error('User already exists');
 
@@ -26,7 +26,8 @@ class AuthService {
       { expiresIn: '1h' }
     );
 
-    return { token, user };
+    // Only return role and token
+    return { token};
   }
 }
 
