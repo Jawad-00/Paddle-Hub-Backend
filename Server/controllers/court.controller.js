@@ -1,20 +1,24 @@
-const CourtService = require('../services/court.service');
-
+const CourtService = require("../services/court.service");
+const cloudinary = require("../config/cloudinary");
 class CourtController {
  static async createCourt(req, res) {
     try {
       let imageUrl;
       if (req.file) {
-        const result = await cloudinary.uploader.upload_stream(
-          { folder: "padel-hub/courts" },
-          (error, result) => {
-            if (error) throw error;
-            imageUrl = result.secure_url;
-          }
-        );
-        result.end(req.file.buffer);
-      }
-
+          imageUrl = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: "padel-hub/courts" },
+            (error, result) => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve(result.secure_url);
+              }
+            }
+          );
+          uploadStream.end(req.file.buffer);
+        });
+    }
       const data = { ...req.body, image: imageUrl };
       const court = await CourtService.createCourt(data);
       res.status(201).json({ message: "Court created", court });
