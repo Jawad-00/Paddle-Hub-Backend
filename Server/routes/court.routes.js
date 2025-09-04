@@ -1,15 +1,14 @@
 const express = require('express');
 const CourtController = require('../controllers/court.controller');
+const auth = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
-// Admin actions
-router.post('/', CourtController.createCourt);
-router.put('/:id', CourtController.updateCourt);
-router.delete('/:id', CourtController.deleteCourt);
-router.post('/:id/closed-date', CourtController.addClosedDate);
+router.post('/', auth('admin'), CourtController.createCourt);
+router.put('/:id', auth('admin'), CourtController.updateCourt);
+router.delete('/:id', auth('admin'), CourtController.deleteCourt);
+router.post('/:id/closed-date', auth('admin'), CourtController.addClosedDate);
 
-// Public actions
 router.get('/', CourtController.getCourts);
 router.get('/:id', CourtController.getCourt);
 
