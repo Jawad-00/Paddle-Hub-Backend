@@ -216,12 +216,10 @@ class BookingService {
     const booking = await Booking.findById(bookingId);
     if (!booking) throw new Error('Booking not found');
 
-    // permission: admin or owner
     if (requester.role !== 'admin' && booking.user.toString() !== requester.id) {
       throw new Error('Not authorized to reschedule this booking');
     }
 
-    // reuse create-logic validations against the same court
     return this._validateAndApplyChange({
       booking,
       courtId: booking.court,
@@ -230,6 +228,49 @@ class BookingService {
       endTime
     });
   }
+  static async _validateAndApplyChange({ booking, courtId, date, startTime, endTime }) {
+    const startMin = hhmmToMinutes(startTime);
+    const endMin = hhmmToMinutes(endTime);
+    if (isNaN(startMin) || isNaN(endMin) || startMin >= endMin) {
+      throw new Error('Invalid time range');
+    }
+
+    const court = await Court.findById(courtId);
+    if (!court) throw new Error('Court not found');
+
+    const ymd = toYMD(date);
+    const isClosedDay = (court.closedDates || []).some(cd => toYMD(cd.date) === ymd);
+    if (isClosedDay) throw new Error('Court is closed on this date');
+
+    const openMin = hhmmToMinutes(court.openingHour || '08:00');
+    const closeMin = hhmmToMinutes(court.closingHour || '22:00');
+    if (startMin < openMin || endMin > closeMin) {
+      throw new Error(`Booking must be within ${court.openingHour}-${court.closingHour}`);
+    }
+
+    const sameDayBookings = await Booking.find({
+      court: courtId,
+      date: new Date(ymd),
+      status: 'booked',
+      _id: { $ne: booking._id }
+    });
+
+    const overlap = sameDayBookings.some(b => {
+      const bStart = hhmmToMinutes(b.startTime);
+      const bEnd = hhmmToMinutes(b.endTime);
+      return rangesOverlap(startMin, endMin, bStart, bEnd);
+    });
+
+    if (overlap) throw new Error('Timeslot already booked');
+
+    booking.date = new Date(ymd);
+    booking.startTime = startTime;
+    booking.endTime = endTime;
+    await booking.save();
+
+    return booking.populate([{ path: 'user', select: 'email phone role' }, { path: 'court' }]);
+  }
 
 }
+module.exports = BookingService;
 
