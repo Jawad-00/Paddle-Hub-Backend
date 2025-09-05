@@ -212,7 +212,24 @@ class BookingService {
     await booking.save();
     return booking;
   }
+  static async rescheduleBooking({ bookingId, requester, date, startTime, endTime }) {
+    const booking = await Booking.findById(bookingId);
+    if (!booking) throw new Error('Booking not found');
 
+    // permission: admin or owner
+    if (requester.role !== 'admin' && booking.user.toString() !== requester.id) {
+      throw new Error('Not authorized to reschedule this booking');
+    }
+
+    // reuse create-logic validations against the same court
+    return this._validateAndApplyChange({
+      booking,
+      courtId: booking.court,
+      date,
+      startTime,
+      endTime
+    });
+  }
 
 }
 
