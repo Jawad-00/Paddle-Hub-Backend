@@ -184,5 +184,20 @@ class BookingService {
     }
     return Booking.find(query).populate('court').sort({ date: 1, startTime: 1 });
   }
+
+    static async getAllBookings({ courtId, from, to, status }) {
+    const query = {};
+    if (courtId) query.court = courtId;
+    if (status) query.status = status;
+    if (from || to) {
+      query.date = {};
+      if (from) query.date.$gte = new Date(from);
+      if (to) query.date.$lte = new Date(to);
+    }
+    return Booking.find(query)
+      .populate([{ path: 'user', select: 'email phone role' }, { path: 'court' }])
+      .sort({ date: 1, startTime: 1 });
+  }
+
 }
 
