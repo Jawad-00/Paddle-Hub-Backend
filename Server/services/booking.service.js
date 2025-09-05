@@ -198,6 +198,21 @@ class BookingService {
       .populate([{ path: 'user', select: 'email phone role' }, { path: 'court' }])
       .sort({ date: 1, startTime: 1 });
   }
+   static async cancelBooking({ bookingId, requester }) {
+    const booking = await Booking.findById(bookingId).populate('user');
+    if (!booking) throw new Error('Booking not found');
+    if (booking.status === 'cancelled') return booking;
+
+    // permission: admin or owner
+    if (requester.role !== 'admin' && booking.user._id.toString() !== requester.id) {
+      throw new Error('Not authorized to cancel this booking');
+    }
+
+    booking.status = 'cancelled';
+    await booking.save();
+    return booking;
+  }
+
 
 }
 
